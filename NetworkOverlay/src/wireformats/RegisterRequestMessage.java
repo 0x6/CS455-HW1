@@ -1,10 +1,17 @@
+package wireformats;
+
 import java.nio.ByteBuffer;
 
 public class RegisterRequestMessage extends Message{
-	
-	RegisterRequestMessage(String _host, int _port) {
-		super(_host, _port);
+	public String host;
+	public int port;
+
+	public RegisterRequestMessage(String _host, int _port) {
+		host = _host;
+		port = _port;
 		type = MessageType.REGISTER_REQUEST;
+
+		buildMessage();
 	}
 	
 	public void buildMessage(){

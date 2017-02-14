@@ -1,3 +1,6 @@
+import wireformats.*;
+import wireformats.Message.MessageType;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -5,7 +8,6 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 
 public class SocketRunnable implements Runnable{
 	public Socket clientSocket;
@@ -46,7 +48,7 @@ public class SocketRunnable implements Runnable{
 	
 	public void handleMessage(byte[] message){
 		ByteBuffer buffer = ByteBuffer.wrap(message);
-		Message.MessageType type = Message.MessageType.values()[buffer.getInt()];
+		MessageType type = MessageType.values()[buffer.getInt()];
 		
 		switch(type){
 		case REGISTER_REQUEST:
@@ -54,11 +56,50 @@ public class SocketRunnable implements Runnable{
 			registerRequest(buffer.getInt(), new String(Arrays.copyOfRange(message, 8, message.length)));
 			break;
 		case DEREGISTER_REQUEST:
+			buffer = ByteBuffer.wrap(message, 4, 4);
+			deregisterRequest(buffer.getInt(), new String(Arrays.copyOfRange(message, 8, message.length)));
 			break;
 		}
 	}
 	
 	public void registerRequest(int port, String host){
+		byte[] message;
+		byte status = 0;
+		String additionalInfo = "";
 		
+		if(host.equals(clientSocket.getInetAddress().getHostAddress())){
+			if(registry.contains(new String(host + " " + port))){
+				status = (byte)2;
+				additionalInfo = "Messaging node is already registered.";
+			} else {
+				registry.add(new String(host + " " + port));
+				
+				status = (byte)0;
+				additionalInfo = "Node successfully registered.";
+			}
+					
+		} else {
+			status = (byte)1;
+			additionalInfo = "Port of host did not match.";
+		}
+		
+		try {
+			RegisterResponseMessage resResponse = new RegisterResponseMessage(status, additionalInfo);
+			dos.write(resResponse.getMessage());
+		} catch (IOException e) {
+			System.out.println("Unable to send register response message. " + e);
+		}
+	}
+
+	public void deregisterRequest(int port, String host){
+		if(host.equals(clientSocket.getInetAddress().getHostAddress())){
+			if(registry.contains(new String(host + " " + port))){
+				registry.remove(new String(host + " " + port));
+			} else {
+				System.out.println("No registration found for host " + host + " " + port + ".");
+			}
+		} else {
+			System.out.println("No registration found for host " + host + " " + port + ".");
+		}
 	}
 }

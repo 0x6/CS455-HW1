@@ -1,4 +1,6 @@
-abstract class Message {
+package wireformats;
+
+abstract public class Message {
 	public enum MessageType{
 		REGISTER_REQUEST,
 		REGISTER_RESPONSE,
@@ -11,19 +13,10 @@ abstract class Message {
 		TRAFFIC_SUMMARY
 	}
 	
-	public String host;
-	public int port;
 	public byte[] message;
 	public int byteLength;
 	
 	Message.MessageType type;
-	
-	Message(String _host, int _port){
-		host = _host;
-		port = _port;
-		
-		buildMessage();
-	}
 	
 	abstract public void buildMessage();
 	
