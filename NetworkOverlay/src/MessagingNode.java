@@ -10,6 +10,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Scanner;
 import java.util.ArrayList;
 
@@ -22,6 +23,8 @@ public class MessagingNode {
 	public static DataOutputStream clientDos;
 	public static DataInputStream clientDis;
 
+	public static HashMap<String, Socket> connections;
+
 	static Thread registryInputThread = new Thread(new Runnable(){
         @Override
         public void run(){
@@ -33,9 +36,11 @@ public class MessagingNode {
 
                         handleMessage(message);
                     }
+
+                    Thread.sleep(10);
                 }
             } catch (Exception e){
-                System.out.println("Unable to read from input stream.");
+                System.out.println("Unable to read from input stream." + e);
             }
         }
 
@@ -45,11 +50,15 @@ public class MessagingNode {
 
             switch(type){
                 case REGISTER_RESPONSE:
-                    if(buffer.get(4) == 0){
+                    if(buffer.get(4) == 0)
                         System.out.println("[SUCCESS] " + buffer.get(4) + ": " + new String(Arrays.copyOfRange(message, 5, message.length)));
-                    } else {
+                    else
                         System.out.println("[FAILURE] " + buffer.get(4) + ": " + new String(Arrays.copyOfRange(message, 5, message.length)));
-                    }
+
+                    break;
+
+                case MESSAGING_NODES_LIST:
+                    handleLink(message);
                     break;
             }
         }
@@ -65,7 +74,7 @@ public class MessagingNode {
 		clientDis = new DataInputStream(clientSocket.getInputStream());
 		
 		host = clientSocket.getInetAddress().getHostAddress();
-		port = clientSocket.getLocalPort();
+		port = serverSocket.getLocalPort();
 
         registryInputThread.start();
 
@@ -91,8 +100,22 @@ public class MessagingNode {
 
 		clientSocket.close();
 	}
+
+	public static void handleLink(byte[] message) {
+        ByteBuffer buffer = ByteBuffer.wrap(message);
+
+        int numHosts = buffer.getInt(4);
+        String[] hosts = new String[numHosts];
+
+        int offset = 8;
+        for(int i = 0; i < numHosts; i++){
+            int hostLength = buffer.getInt(offset);
+            hosts[i] = new String(Arrays.copyOfRange(message, offset + 4, offset + 4 + hostLength));
+            offset += 4 + hostLength;
+        }
+    }
 	
-	public static void register(){
+	public static void register() throws IOException {
 	    System.out.println("Attempting to register...");
 		RegisterRequestMessage request = new RegisterRequestMessage(host, port);
 		
@@ -100,16 +123,18 @@ public class MessagingNode {
 			clientDos.write(request.getMessage());
 		} catch (IOException e) {
 			System.out.print("Unable to register node. " + e);
+			throw e;
 		}
 	}
 
-	public static void deregister() {
+	public static void deregister() throws IOException {
 		DeregisterRequestMessage request = new DeregisterRequestMessage(host, port);
 
 		try {
 			clientDos.write(request.getMessage());
 		} catch (IOException e) {
 			System.out.print("Unable to deregister node. " + e);
+			throw e;
 		}
 	}
 }

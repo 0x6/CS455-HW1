@@ -8,14 +8,15 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 
 public class SocketRunnable implements Runnable{
 	public Socket clientSocket;
 	public DataOutputStream dos;
 	public DataInputStream dis;
-	public ArrayList<String> registry;
+	public HashMap<String, Socket> registry;
 	
-	public SocketRunnable(Socket _clientSocket, ArrayList<String> _registry){
+	public SocketRunnable(Socket _clientSocket, HashMap<String, Socket> _registry){
 		clientSocket = _clientSocket;
 		registry = _registry;
 		
@@ -38,6 +39,8 @@ public class SocketRunnable implements Runnable{
 					
 					handleMessage(message);
 				}
+
+				Thread.sleep(10);
 			}
 		} catch (Exception e) {
 			System.out.println("Unable to get available bytes. " + e);
@@ -68,11 +71,11 @@ public class SocketRunnable implements Runnable{
 		String additionalInfo = "";
 		
 		if(host.equals(clientSocket.getInetAddress().getHostAddress())){
-			if(registry.contains(new String(host + " " + port))){
+			if(registry.keySet().contains(new String(host + ":" + port))){
 				status = (byte)2;
 				additionalInfo = "Messaging node is already registered.";
 			} else {
-				registry.add(new String(host + " " + port));
+				registry.put(new String(host + ":" + port), clientSocket);
 				
 				status = (byte)0;
 				additionalInfo = "Node successfully registered.";
@@ -80,7 +83,7 @@ public class SocketRunnable implements Runnable{
 					
 		} else {
 			status = (byte)1;
-			additionalInfo = "Port of host did not match.";
+			additionalInfo = "Host name did not match.";
 		}
 		
 		try {
@@ -93,8 +96,8 @@ public class SocketRunnable implements Runnable{
 
 	public void deregisterRequest(int port, String host){
 		if(host.equals(clientSocket.getInetAddress().getHostAddress())){
-			if(registry.contains(new String(host + " " + port))){
-				registry.remove(new String(host + " " + port));
+			if(registry.keySet().contains(new String(host + ":" + port))){
+				registry.remove(new String(host + ":" + port));
 			} else {
 				System.out.println("No registration found for host " + host + " " + port + ".");
 			}
