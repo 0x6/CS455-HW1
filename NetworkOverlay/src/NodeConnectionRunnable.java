@@ -6,9 +6,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class NodeConnectionRunnable implements Runnable{
     public Socket nodeSocket;
@@ -16,11 +16,18 @@ public class NodeConnectionRunnable implements Runnable{
     public DataInputStream dis;
     public HashMap<String, Socket> connections;
 
-    public int registerAttempts = 0;
+    byte[] fragment = null;
 
-    public NodeConnectionRunnable(Socket _clientSocket, HashMap<String, Socket> _connections){
+    public AtomicInteger sendTracker;
+    public AtomicInteger relayTracker;
+    public AtomicInteger receiveTracker;
+
+    public NodeConnectionRunnable(Socket _clientSocket, HashMap<String, Socket> _connections, AtomicInteger _sendTracker, AtomicInteger _receiveTracker, AtomicInteger _relayTracker){
         nodeSocket = _clientSocket;
         connections = _connections;
+        sendTracker = _sendTracker;
+        relayTracker = _relayTracker;
+        receiveTracker = _receiveTracker;
 
         try {
             dos = new DataOutputStream(nodeSocket.getOutputStream());
@@ -41,26 +48,44 @@ public class NodeConnectionRunnable implements Runnable{
 
                     sanitizeMessages(message);
                 }
-
                 Thread.sleep(10);
             }
         } catch (Exception e) {
-            System.out.println("Unable to get available bytes. " + e);
+            System.out.println("Node Connection Runnable - Unable to get available bytes. " + e);
         }
 
         System.out.println("Done");
     }
 
     public void sanitizeMessages(byte[] bytestring) throws IOException{
+        if(fragment != null){
+            byte[] combine = new byte[bytestring.length + fragment.length];
+            System.arraycopy(fragment, 0, combine, 0, fragment.length);
+            System.arraycopy(bytestring, 0, combine, fragment.length, bytestring.length);
+
+            bytestring = combine;
+            fragment = null;
+        }
+
         while(bytestring.length > 0){
+            if(bytestring.length < 4){
+                fragment = bytestring;
+                break;
+            }
+
             ByteBuffer buffer = ByteBuffer.wrap(bytestring);
-
             int length = buffer.getInt();
-            byte[] message = Arrays.copyOfRange(bytestring, 4, length);
 
-            handleMessage(message);
+            if(length <= bytestring.length){
+                byte[] message = Arrays.copyOfRange(bytestring, 4, length);
 
-            bytestring = Arrays.copyOfRange(bytestring, length, bytestring.length);
+                handleMessage(message);
+
+                bytestring = Arrays.copyOfRange(bytestring, length, bytestring.length);
+            } else {
+                fragment = bytestring;
+                break;
+            }
         }
     }
 
@@ -95,12 +120,13 @@ public class NodeConnectionRunnable implements Runnable{
                 path += parts[i];
             }
 
-            System.out.println("Passing data...");
+            //System.out.println("Passing data...");
+            sendTracker.getAndIncrement();
             DataTransmissionMessage request = new DataTransmissionMessage(path, payload);
             if(connections.containsKey(target))
                 connections.get(target).getOutputStream().write(request.getMessage());
         } else {
-            System.out.println("Payload has reached sink.");
+            receiveTracker.getAndIncrement();
         }
     }
 

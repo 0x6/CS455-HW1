@@ -1,8 +1,5 @@
-import wireformats.DataTransmissionMessage;
-import wireformats.DeregisterRequestMessage;
+import wireformats.*;
 import wireformats.Message.MessageType;
-import wireformats.RegisterRequestMessage;
-import wireformats.TestMessage;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -14,6 +11,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MessagingNode {
 	public static String host;
@@ -26,6 +24,10 @@ public class MessagingNode {
 
 	public volatile static HashMap<String, Socket> connections;
 	public static HashMap<String, ArrayList<Link>> links;
+
+	public static volatile AtomicInteger sendTracker;
+	public static volatile AtomicInteger receiveTracker;
+	public static volatile AtomicInteger relayTracker;
 
 	static Thread inputThread = new Thread(new Runnable(){
         @Override
@@ -88,7 +90,7 @@ public class MessagingNode {
                 try{
                     Socket connection = serverSocket.accept();
 
-                    new Thread(new NodeConnectionRunnable(connection, connections)).start();
+                    new Thread(new NodeConnectionRunnable(connection, connections, sendTracker, receiveTracker, relayTracker)).start();
                 } catch (IOException e){
                     System.out.println("Unable to accept incoming connection. " + e);
                 }
@@ -108,6 +110,10 @@ public class MessagingNode {
         port = serverSocket.getLocalPort();
 
 		System.out.println("[Node] Identity: " + host + ":" + port);
+
+		sendTracker = new AtomicInteger(0);
+		receiveTracker =new AtomicInteger(0);
+		relayTracker = new AtomicInteger(0);
 
 		clientDos = new DataOutputStream(clientSocket.getOutputStream());
 		clientDis = new DataInputStream(clientSocket.getInputStream());
@@ -207,9 +213,16 @@ public class MessagingNode {
                     } catch (IOException e){
                         System.out.print("Failed to send round.");
                     }
+
+                    sendTracker.getAndIncrement();
                 }
 
-
+                try{
+                    TaskCompleteMessage request = new TaskCompleteMessage(host, port);
+                    clientDos.write(request.getMessage());
+                } catch (IOException e){
+                    System.out.println("Unable to send task complete message.");
+                }
             }
         }).start();
     }
@@ -356,7 +369,7 @@ public class MessagingNode {
                 connections.put(cHost + ":" + cPort, connection);
                 System.out.println("[Node] Creating connection to " + cHost + ":" + cPort);
 
-                new Thread(new NodeConnectionRunnable(connection, connections)).start();
+                new Thread(new NodeConnectionRunnable(connection, connections, sendTracker, receiveTracker, relayTracker)).start();
 
                 RegisterRequestMessage request = new RegisterRequestMessage(connection.getInetAddress().getHostAddress(), port);
                 connection.getOutputStream().write(request.getMessage());

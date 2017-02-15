@@ -73,6 +73,9 @@ public class RegistryRunnable implements Runnable{
 			case DEREGISTER_REQUEST:
 				deregisterRequest(buffer.getInt(4), new String(Arrays.copyOfRange(message, 8, message.length)));
 				break;
+			case TASK_COMPLETE:
+				System.out.println("Task complete.");
+				break;
 		}
 	}
 	
