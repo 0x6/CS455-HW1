@@ -16,9 +16,10 @@ public class RegisterResponseMessage extends Message{
 	
 	@Override
 	public void buildMessage() {
-		byteLength = 4 + 1 + additionalInfo.getBytes().length;
+		byteLength = 4 + 4 + 1 + additionalInfo.getBytes().length;
 		ByteBuffer bb = ByteBuffer.allocate(byteLength);
-		
+
+		bb.putInt(byteLength);
 		bb.putInt(type.ordinal());
 		bb.put(status);
 		bb.put(additionalInfo.getBytes());

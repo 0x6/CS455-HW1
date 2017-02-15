@@ -10,13 +10,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
-public class SocketRunnable implements Runnable{
+public class RegistryRunnable implements Runnable{
 	public Socket clientSocket;
 	public DataOutputStream dos;
 	public DataInputStream dis;
 	public HashMap<String, Socket> registry;
-	
-	public SocketRunnable(Socket _clientSocket, HashMap<String, Socket> _registry){
+
+	public RegistryRunnable(Socket _clientSocket, HashMap<String, Socket> _registry){
 		clientSocket = _clientSocket;
 		registry = _registry;
 		
@@ -37,7 +37,7 @@ public class SocketRunnable implements Runnable{
 					byte[] message = new byte[dis.available()];
 					dis.readFully(message);
 					
-					handleMessage(message);
+					sanitizeMessages(message);
 				}
 
 				Thread.sleep(10);
@@ -48,28 +48,38 @@ public class SocketRunnable implements Runnable{
 		
 		System.out.println("Done");
 	}
+
+	public void sanitizeMessages(byte[] bytestring){
+		while(bytestring.length > 0){
+			ByteBuffer buffer = ByteBuffer.wrap(bytestring);
+
+			int length = buffer.getInt();
+			byte[] message = Arrays.copyOfRange(bytestring, 4, length);
+
+			handleMessage(message);
+
+			bytestring = Arrays.copyOfRange(bytestring, length, bytestring.length);
+		}
+	}
 	
-	public void handleMessage(byte[] message){
+	public void handleMessage(byte[] message) {
 		ByteBuffer buffer = ByteBuffer.wrap(message);
 		MessageType type = MessageType.values()[buffer.getInt()];
-		
-		switch(type){
-		case REGISTER_REQUEST:
-			buffer = ByteBuffer.wrap(message, 4, 4);
-			registerRequest(buffer.getInt(), new String(Arrays.copyOfRange(message, 8, message.length)));
-			break;
-		case DEREGISTER_REQUEST:
-			buffer = ByteBuffer.wrap(message, 4, 4);
-			deregisterRequest(buffer.getInt(), new String(Arrays.copyOfRange(message, 8, message.length)));
-			break;
+
+		switch (type) {
+			case REGISTER_REQUEST:
+				registerRequest(buffer.getInt(4), new String(Arrays.copyOfRange(message, 8, message.length)));
+				break;
+			case DEREGISTER_REQUEST:
+				deregisterRequest(buffer.getInt(4), new String(Arrays.copyOfRange(message, 8, message.length)));
+				break;
 		}
 	}
 	
 	public void registerRequest(int port, String host){
-		byte[] message;
 		byte status = 0;
 		String additionalInfo = "";
-		
+
 		if(host.equals(clientSocket.getInetAddress().getHostAddress())){
 			if(registry.keySet().contains(new String(host + ":" + port))){
 				status = (byte)2;
@@ -79,6 +89,7 @@ public class SocketRunnable implements Runnable{
 				
 				status = (byte)0;
 				additionalInfo = "Node successfully registered.";
+				System.out.println("[Registry] " + host + ":" + port + " registered.");
 			}
 					
 		} else {
@@ -95,14 +106,30 @@ public class SocketRunnable implements Runnable{
 	}
 
 	public void deregisterRequest(int port, String host){
+		byte status = 0;
+		String additionalInfo = "";
+
 		if(host.equals(clientSocket.getInetAddress().getHostAddress())){
 			if(registry.keySet().contains(new String(host + ":" + port))){
+				status = (byte)0;
+				additionalInfo = "Node successfully deregistered.";
+
 				registry.remove(new String(host + ":" + port));
+				System.out.println("[Registry] " + host + ":" + port + " deregistered.");
 			} else {
-				System.out.println("No registration found for host " + host + " " + port + ".");
+				status = (byte)2;
+				additionalInfo = "No registration found for " + host + ":" + port + ".";
 			}
 		} else {
-			System.out.println("No registration found for host " + host + " " + port + ".");
+			status = (byte)1;
+			additionalInfo = "Host name did not match.";
+		}
+
+		try {
+			DeregisterResponseMessage resResponse = new DeregisterResponseMessage(status, additionalInfo);
+			dos.write(resResponse.getMessage());
+		} catch (IOException e) {
+			System.out.println("Unable to send deregister response message. " + e);
 		}
 	}
 }

@@ -2,19 +2,19 @@ package wireformats;
 
 import java.nio.ByteBuffer;
 
-public class NodeListMessage extends Message{
-    String[] nodes;
+public class LinkWeightMessage extends Message{
+    String[] links;
 
-    public NodeListMessage(String[] _nodes){
-        type = MessageType.MESSAGING_NODES_LIST;
-        nodes = _nodes;
+    public LinkWeightMessage(String[] _links){
+        links = _links;
+        type = MessageType.LINK_WEIGHTS;
 
         buildMessage();
     }
 
     public void buildMessage() {
         byteLength = 4 + 4 + 4;
-        for(String str: nodes){
+        for(String str: links){
             byteLength += str.getBytes().length + 4;
         }
 
@@ -22,9 +22,9 @@ public class NodeListMessage extends Message{
 
         buffer.putInt(byteLength);
         buffer.putInt(type.ordinal());
-        buffer.putInt(nodes.length);
+        buffer.putInt(links.length);
 
-        for(String str: nodes){
+        for(String str: links){
             buffer.putInt(str.getBytes().length);
             buffer.put(str.getBytes());
         }

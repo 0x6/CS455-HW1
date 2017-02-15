@@ -15,9 +15,10 @@ public class DeregisterRequestMessage extends Message{
     }
 
     public void buildMessage(){
-        byteLength = host.getBytes().length + 8;
+        byteLength = host.getBytes().length + 4 + 4 + 4;
         ByteBuffer bb = ByteBuffer.allocate(byteLength);
 
+        bb.putInt(byteLength);
         bb.putInt(type.ordinal());
         bb.putInt(port);
         bb.put(host.getBytes());
