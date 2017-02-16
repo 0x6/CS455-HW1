@@ -6,6 +6,7 @@ public class TrafficReport {
     private int received;
 
     private int contributers;
+    private boolean header;
 
     public TrafficReport(){
         sent = 0;
@@ -14,6 +15,7 @@ public class TrafficReport {
         sumReceived = 0;
 
         contributers = 0;
+        header = false;
     }
 
     public synchronized void contribute(int _sent, long _sumSent, int _received, long _sumReceived){
@@ -25,11 +27,48 @@ public class TrafficReport {
         contributers++;
     }
 
+    public synchronized boolean headerBuilt(){
+        if(!header){
+            header = true;
+            return false;
+        }
+
+        return header;
+    }
+
     public synchronized int getContributers(){
         return contributers;
     }
 
     public String toString(){
-        return ("Total: Sent: " + sent + " Sum: " + sumSent + " Received: " + received + " Sum: " + sumReceived);
+        String output = "|          Sum          ";
+        String temp = "";
+
+        temp = sent + "";
+        output += " |     " + temp;
+        for(int i = 0; i < 10 - temp.length(); i++){
+            output += " ";
+        }
+
+        temp = received + "";
+        output += "    |      " + temp;
+        for(int i = 0; i < 10 - temp.length(); i++){
+            output += " ";
+        }
+
+        temp = sumSent + "";
+        output += "     |  " + temp;
+        for(int i = 0; i < 19 - temp.length(); i++){
+            output += " ";
+        }
+
+        temp = sumReceived + "";
+        output += " |  " + temp;
+        for(int i = 0; i < 19 - temp.length(); i++){
+            output += " ";
+        }
+
+        output += "  |";
+        return output;
     }
 }

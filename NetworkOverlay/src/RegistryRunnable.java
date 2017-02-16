@@ -95,7 +95,6 @@ public class RegistryRunnable implements Runnable{
 							try {
 								Thread.sleep(5000);
 
-								System.out.println("[Registry] Requesting traffic pull from messaging nodes.");
 								for (String key : registry.keySet()) {
 									Socket s = registry.get(key);
 
@@ -121,17 +120,51 @@ public class RegistryRunnable implements Runnable{
 				int port = buffer.getInt(32);
 				String host = new String(Arrays.copyOfRange(message, 36, message.length));
 
-				if(trafficReport.getContributers() == 0){
-					System.out.println("|     Node     |    # Messages Sent    |    # Messages Received    |    Sum of Sent    |    Sum of Received    |    # Messages Relayed    |");
+				if(!trafficReport.headerBuilt()){
+					System.out.println("|          Node          |  # Messages Sent  | # Messages Received |      Sum of Sent     |    Sum of Received    | # Messages Relayed |");
+				}
+				String output = "";
+
+				String temp = host + ":" + port;
+				output += "| " + temp;
+				for(int i = 0; i < 22 - temp.length(); i++){
+					output += " ";
 				}
 
-				StringBuilder sb = new StringBuilder();
+				temp = sent + "";
+				output += " |     " + temp;
+				for(int i = 0; i < 10 - temp.length(); i++){
+					output += " ";
+				}
 
-				sb.setLength(14);
-				sb.append(host + ":" + port);
+				temp = received + "";
+				output += "    |      " + temp;
+				for(int i = 0; i < 10 - temp.length(); i++){
+					output += " ";
+				}
 
-				System.out.print();
+				temp = sumSent + "";
+				output += "     |  " + temp;
+				for(int i = 0; i < 19 - temp.length(); i++){
+					output += " ";
+				}
+
+				temp = sumReceived + "";
+				output += " |  " + temp;
+				for(int i = 0; i < 19 - temp.length(); i++){
+					output += " ";
+				}
+
+				temp = relayed + "";
+				output += "  |      " + temp;
+				for(int i = 0; i < 10 - temp.length(); i++){
+					output += " ";
+				}
+				output += "    |";
+
 				//System.out.println(host + ":" + port + " Sent: " + sent + " Sum: " + sumSent + " Received: " + received + " Sum: " + sumReceived + " Relayed: " + relayed);
+
+				System.out.println(output);
 
 				trafficReport.contribute(sent, sumSent, received, sumReceived);
 				if(trafficReport.getContributers() == registry.size()){

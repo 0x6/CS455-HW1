@@ -35,8 +35,6 @@ public class MessagingNode {
 
 	static boolean mainFlag;
 
-	static int testHops = 0;
-
 	static Thread inputThread = new Thread(new Runnable(){
         @Override
         public void run(){
@@ -158,38 +156,6 @@ public class MessagingNode {
                 case "print-shortest-path":
                     printShortestPaths();
                     break;
-                case "test-hops":
-                    ArrayList<String> nodes = new ArrayList<String>(links.keySet());
-                    nodes.remove(host + ":" + port);
-
-                    int hops = 0;
-                    String finalPath = "";
-                    while(hops < 3){
-                        String sink = nodes.get(ThreadLocalRandom.current().nextInt(0, nodes.size()));
-                        String path = computePath(host + ":" + port, sink);
-
-                        hops = path.split(" ").length;
-                        finalPath = path;
-                    }
-
-                    System.out.println(finalPath);
-
-                    String[] parts = finalPath.split(" ");
-
-                    finalPath = "";
-                    for( int i = 1; i < parts.length; i++){
-                        finalPath += parts[i] + " ";
-                    }
-                    finalPath = finalPath.trim();
-
-                    DataTransmissionMessage request = new DataTransmissionMessage(finalPath, 20);
-                    try{
-                        connections.get(parts[0]).getOutputStream().write(request.getMessage());
-                    } catch (IOException e){
-                        System.out.println("error");
-                    }
-
-                    break;
             }
 
 		} while(mainFlag);
@@ -236,11 +202,6 @@ public class MessagingNode {
                     String[] parts = path.split(" ");
                     String target = parts[0];
 
-                    System.out.println("[" + parts.length + "] " + path);
-
-                    if(parts.length > 2)
-                        testHops++;
-
                     path = "";
                     for(int j = 1; j < parts.length; j++){
                         path += parts[j] + " ";
@@ -266,8 +227,6 @@ public class MessagingNode {
                 } catch (IOException e){
                     System.out.println("Unable to send task complete message.");
                 }
-
-                System.out.println("Hops > 2: " + testHops);
             }
         }).start();
     }
