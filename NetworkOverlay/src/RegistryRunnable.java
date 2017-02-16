@@ -74,9 +74,6 @@ public class RegistryRunnable implements Runnable{
 		MessageType type = MessageType.values()[buffer.getInt()];
 
 		switch (type) {
-			case DATA_TRANSMISSION:
-				System.out.println("Why are you here.");
-				break;
 			case REGISTER_REQUEST:
 				registerRequest(buffer.getInt(4), new String(Arrays.copyOfRange(message, 8, message.length)));
 				break;
@@ -188,7 +185,7 @@ public class RegistryRunnable implements Runnable{
 				
 				status = (byte)0;
 				additionalInfo = "Node successfully registered.";
-				System.out.println("[Registry] " + host + ":" + port + " registered.");
+				System.out.println("[Registry] " + host + ":" + port + " registered. (" + registry.size() + ") nodes currently in overlay.");
 			}
 					
 		} else {

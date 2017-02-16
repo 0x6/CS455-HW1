@@ -14,7 +14,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Registry {
-	final static int PORT = 8000;
 	static volatile HashMap<String, Socket> registry;
 	static ServerSocket serverSocket;
 
@@ -41,12 +40,13 @@ public class Registry {
 	});
 	
 	public static void main(String[] args) throws IOException{
-		System.out.println("[Registry] Identity: " +  InetAddress.getLocalHost().getHostAddress() + ":" + PORT);
+		System.out.println("[Registry] Identity: " +  InetAddress.getLocalHost().getHostAddress() + ":" + args[0]);
 
 		boolean mainFlag = true;
 
-		serverSocket = new ServerSocket(PORT);
-		
+		serverSocket = new ServerSocket(new Integer(args[0]));
+
+		links = new ArrayList<String>();
 		registry = new HashMap<String, Socket>();
 		partners = new HashMap<String, ArrayList<String>>();
 		completed = new AtomicInteger(0);
