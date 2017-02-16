@@ -1,5 +1,7 @@
-import wireformats.*;
-import wireformats.Message.MessageType;
+package cs455.overlay.node;
+
+import cs455.overlay.wireformats.*;
+import cs455.overlay.wireformats.Message.MessageType;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -371,13 +373,13 @@ public class MessagingNode {
 
         /*for(String key: links.keySet()){
             System.out.print(key + " | ");
-            for(Link link: links.get(key)){
+            for(cs455.overlay.node.Link link: links.get(key)){
                 System.out.print(link.toString() + " ");
             }
             System.out.println();
         }*/
 
-        System.out.println("[Node] Link weights are received and processed. Ready to send messages.");
+        System.out.println("[Node] cs455.overlay.node.Link weights are received and processed. Ready to send messages.");
     }
 
 	public static void handleLink(byte[] message) throws IOException{

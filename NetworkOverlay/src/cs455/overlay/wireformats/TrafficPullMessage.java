@@ -1,4 +1,4 @@
-package wireformats;
+package cs455.overlay.wireformats;
 
 import java.nio.ByteBuffer;
 

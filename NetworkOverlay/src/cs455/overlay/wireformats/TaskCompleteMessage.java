@@ -1,15 +1,15 @@
-package wireformats;
+package cs455.overlay.wireformats;
 
 import java.nio.ByteBuffer;
 
-public class DeregisterRequestMessage extends Message{
+public class TaskCompleteMessage extends Message{
     public String host;
     public int port;
 
-    public DeregisterRequestMessage(String _host, int _port) {
+    public TaskCompleteMessage(String _host, int _port) {
         host = _host;
         port = _port;
-        type = MessageType.DEREGISTER_REQUEST;
+        type = MessageType.TASK_COMPLETE;
 
         buildMessage();
     }

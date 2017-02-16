@@ -1,3 +1,4 @@
+package cs455.overlay.node;
 
 public class TrafficReport {
     private long sumSent;

@@ -1,3 +1,5 @@
+package cs455.overlay.node;
+
 public class Link {
     public String node;
     public int weight;

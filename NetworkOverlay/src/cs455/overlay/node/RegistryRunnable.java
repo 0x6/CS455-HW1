@@ -1,16 +1,16 @@
-import wireformats.*;
-import wireformats.Message.MessageType;
+package cs455.overlay.node;
+
+import cs455.overlay.wireformats.*;
+import cs455.overlay.wireformats.Message.MessageType;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class RegistryRunnable implements Runnable{
 	public Socket clientSocket;
@@ -87,7 +87,7 @@ public class RegistryRunnable implements Runnable{
 					new Thread(new Runnable(){
 						@Override
 						public void run(){
-							System.out.println("[Registry] Waiting 5 seconds for messages to propagate...");
+							System.out.println("[cs455.overlay.node.Registry] Waiting 5 seconds for messages to propagate...");
 
 							try {
 								Thread.sleep(5000);
@@ -185,7 +185,7 @@ public class RegistryRunnable implements Runnable{
 				
 				status = (byte)0;
 				additionalInfo = "Node successfully registered.";
-				System.out.println("[Registry] " + host + ":" + port + " registered. (" + registry.size() + ") nodes currently in overlay.");
+				System.out.println("[cs455.overlay.node.Registry] " + host + ":" + port + " registered. (" + registry.size() + ") nodes currently in overlay.");
 			}
 					
 		} else {
@@ -211,7 +211,7 @@ public class RegistryRunnable implements Runnable{
 				additionalInfo = "Node successfully deregistered.";
 
 				registry.remove(new String(host + ":" + port));
-				System.out.println("[Registry] " + host + ":" + port + " deregistered.");
+				System.out.println("[cs455.overlay.node.Registry] " + host + ":" + port + " deregistered.");
 			} else {
 				status = (byte)2;
 				additionalInfo = "No registration found for " + host + ":" + port + ".";

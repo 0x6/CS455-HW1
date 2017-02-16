@@ -1,20 +1,20 @@
-package wireformats;
+package cs455.overlay.wireformats;
 
 import java.nio.ByteBuffer;
 
-public class LinkWeightMessage extends Message{
-    String[] links;
+public class NodeListMessage extends Message{
+    String[] nodes;
 
-    public LinkWeightMessage(String[] _links){
-        links = _links;
-        type = MessageType.LINK_WEIGHTS;
+    public NodeListMessage(String[] _nodes){
+        type = MessageType.MESSAGING_NODES_LIST;
+        nodes = _nodes;
 
         buildMessage();
     }
 
     public void buildMessage() {
         byteLength = 4 + 4 + 4;
-        for(String str: links){
+        for(String str: nodes){
             byteLength += str.getBytes().length + 4;
         }
 
@@ -22,9 +22,9 @@ public class LinkWeightMessage extends Message{
 
         buffer.putInt(byteLength);
         buffer.putInt(type.ordinal());
-        buffer.putInt(links.length);
+        buffer.putInt(nodes.length);
 
-        for(String str: links){
+        for(String str: nodes){
             buffer.putInt(str.getBytes().length);
             buffer.put(str.getBytes());
         }

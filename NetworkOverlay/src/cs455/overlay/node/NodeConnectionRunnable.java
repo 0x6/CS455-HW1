@@ -1,5 +1,7 @@
-import wireformats.*;
-import wireformats.Message.MessageType;
+package cs455.overlay.node;
+
+import cs455.overlay.wireformats.*;
+import cs455.overlay.wireformats.Message.MessageType;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

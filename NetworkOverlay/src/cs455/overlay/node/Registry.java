@@ -1,7 +1,8 @@
-import wireformats.LinkWeightMessage;
-import wireformats.NodeListMessage;
-import wireformats.TaskInitiateMessage;
-import wireformats.TrafficPullMessage;
+package cs455.overlay.node;
+
+import cs455.overlay.wireformats.LinkWeightMessage;
+import cs455.overlay.wireformats.NodeListMessage;
+import cs455.overlay.wireformats.TaskInitiateMessage;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -11,7 +12,6 @@ import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class Registry {
 	static volatile HashMap<String, Socket> registry;
@@ -40,7 +40,7 @@ public class Registry {
 	});
 	
 	public static void main(String[] args) throws IOException{
-		System.out.println("[Registry] Identity: " +  InetAddress.getLocalHost().getHostAddress() + ":" + args[0]);
+		System.out.println("[cs455.overlay.node.Registry] Identity: " +  InetAddress.getLocalHost().getHostAddress() + ":" + args[0]);
 
 		boolean mainFlag = true;
 
@@ -61,9 +61,9 @@ public class Registry {
 
 			switch(command){
 				case "list-messaging nodes":
-					System.out.println("[Registry] Size of registry: " + registry.size());
+					System.out.println("[cs455.overlay.node.Registry] Size of registry: " + registry.size());
 					for(String str: registry.keySet()){
-						System.out.println("[Registry] " + str);
+						System.out.println("[cs455.overlay.node.Registry] " + str);
 					}
 					break;
 				case "send-overlay-link-weights":
@@ -71,7 +71,7 @@ public class Registry {
 					break;
                 case "list-weights":
                     for(String str: links){
-                        System.out.println("[Registry] " + str);
+                        System.out.println("[cs455.overlay.node.Registry] " + str);
                     }
                     break;
 				case "exit":
@@ -149,7 +149,7 @@ public class Registry {
 			}
 		}
 
-		System.out.println("[Registry] Finished constructing overlay with " + connections + " connections.");
+		System.out.println("[cs455.overlay.node.Registry] Finished constructing overlay with " + connections + " connections.");
 	}
 
 	public static void linkWeights(){
@@ -171,7 +171,7 @@ public class Registry {
 			}
 		}
 
-        System.out.println("[Registry] Finished assigning link weights.");
+        System.out.println("[cs455.overlay.node.Registry] Finished assigning link weights.");
 	}
 
 	public static void startMessaging(int numRounds){
@@ -185,6 +185,6 @@ public class Registry {
             System.out.println("Unable to send initiate message.");
         }
 
-        System.out.println("[Registry] Starting " + numRounds + " messaging rounds on all nodes.");
+        System.out.println("[cs455.overlay.node.Registry] Starting " + numRounds + " messaging rounds on all nodes.");
     }
 }
