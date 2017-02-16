@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MessagingNode {
 	public static String host;
@@ -28,6 +29,13 @@ public class MessagingNode {
 	public static volatile AtomicInteger sendTracker;
 	public static volatile AtomicInteger receiveTracker;
 	public static volatile AtomicInteger relayTracker;
+
+	public static volatile AtomicLong sendSummation;
+	public static volatile AtomicLong receiveSummation;
+
+	static boolean mainFlag;
+
+	static int testHops = 0;
 
 	static Thread inputThread = new Thread(new Runnable(){
         @Override
@@ -67,8 +75,12 @@ public class MessagingNode {
 
             switch(type){
                 case REGISTER_RESPONSE:
-                case DEREGISTER_RESPONSE:
                     System.out.println("[Node] " + buffer.get(4) + ": " + new String(Arrays.copyOfRange(message, 5, message.length)));
+                    break;
+                case DEREGISTER_RESPONSE:
+                    mainFlag = false;
+                    System.out.println("[Node] " + buffer.get(4) + ": " + new String(Arrays.copyOfRange(message, 5, message.length)));
+                    System.exit(0);
                     break;
                 case MESSAGING_NODES_LIST:
                     handleLink(message);
@@ -78,6 +90,9 @@ public class MessagingNode {
                     break;
                 case TASK_INITIATE:
                     sendMessages(buffer.getInt(4));
+                    break;
+                case PULL_TRAFFIC_SUMMARY:
+                    trafficSummary();
                     break;
             }
         }
@@ -90,7 +105,7 @@ public class MessagingNode {
                 try{
                     Socket connection = serverSocket.accept();
 
-                    new Thread(new NodeConnectionRunnable(connection, connections, sendTracker, receiveTracker, relayTracker)).start();
+                    new Thread(new NodeConnectionRunnable(connection, connections, receiveTracker, receiveSummation, relayTracker)).start();
                 } catch (IOException e){
                     System.out.println("Unable to accept incoming connection. " + e);
                 }
@@ -99,7 +114,7 @@ public class MessagingNode {
     });
 	
 	public static void main(String[] args) throws UnknownHostException, IOException{
-		boolean mainFlag = true;
+		mainFlag = true;
 		connections = new HashMap<String, Socket>();
 		links = new HashMap<String, ArrayList<Link>>();
 
@@ -115,6 +130,9 @@ public class MessagingNode {
 		receiveTracker =new AtomicInteger(0);
 		relayTracker = new AtomicInteger(0);
 
+		sendSummation = new AtomicLong(0);
+		receiveSummation = new AtomicLong(0);
+
 		clientDos = new DataOutputStream(clientSocket.getOutputStream());
 		clientDis = new DataInputStream(clientSocket.getInputStream());
 
@@ -128,9 +146,6 @@ public class MessagingNode {
 		    String command = sc.nextLine();
 
             switch(command){
-                case "deregister":
-                    deregister();
-                    break;
                 case "register":
                     register();
                     break;
@@ -138,40 +153,43 @@ public class MessagingNode {
                     listConnections();
                     break;
                 case "exit-overlay":
-                    mainFlag = false;
+                    deregister();
                     break;
-                case "test-compute":
-                    ArrayList<String> list = new ArrayList<String>(links.keySet());
-                    String source = host + ":" + port;
-                    list.remove(source);
-
-                    String sink = list.get(ThreadLocalRandom.current().nextInt(0, list.size()));
-
-                    computePath(source, sink);
+                case "print-shortest-path":
+                    printShortestPaths();
                     break;
-            }
+                case "test-hops":
+                    ArrayList<String> nodes = new ArrayList<String>(links.keySet());
+                    nodes.remove(host + ":" + port);
 
-            if(command.contains("test-data")){
-                String[] parts = command.split(" ");
+                    int hops = 0;
+                    String finalPath = "";
+                    while(hops < 3){
+                        String sink = nodes.get(ThreadLocalRandom.current().nextInt(0, nodes.size()));
+                        String path = computePath(host + ":" + port, sink);
 
-                TestMessage testMessage = new TestMessage();
-                if(connections.containsKey(parts[1]))
-                    connections.get(parts[1]).getOutputStream().write(testMessage.getMessage());
-            }
+                        hops = path.split(" ").length;
+                        finalPath = path;
+                    }
 
-            if(command.contains("test-trans")){
-                String[] parts = command.split(" ");
+                    System.out.println(finalPath);
 
-                String path = "";
-                for(int i = 3; i < parts.length; i++){
-                    path += parts[i] + " ";
-                }
-                path = path.trim();
+                    String[] parts = finalPath.split(" ");
 
-                System.out.println("|" + path + "|");
-                DataTransmissionMessage request = new DataTransmissionMessage(path, new Integer(parts[2]));
-                if(connections.containsKey(parts[1]))
-                    connections.get(parts[1]).getOutputStream().write(request.getMessage());
+                    finalPath = "";
+                    for( int i = 1; i < parts.length; i++){
+                        finalPath += parts[i] + " ";
+                    }
+                    finalPath = finalPath.trim();
+
+                    DataTransmissionMessage request = new DataTransmissionMessage(finalPath, 20);
+                    try{
+                        connections.get(parts[0]).getOutputStream().write(request.getMessage());
+                    } catch (IOException e){
+                        System.out.println("error");
+                    }
+
+                    break;
             }
 
 		} while(mainFlag);
@@ -184,6 +202,22 @@ public class MessagingNode {
 	    for(String key: connections.keySet()){
             System.out.println(key);
         }
+    }
+
+    public static void trafficSummary(){
+	    TrafficSummaryMessage request = new TrafficSummaryMessage(sendTracker.get(), sendSummation.get(), receiveTracker.get(), receiveSummation.get(), relayTracker.get(), host, port);
+
+	    try{
+            clientDos.write(request.getMessage());
+        } catch (IOException e){
+	        System.out.println("Unable to send traffic summary." + e);
+        }
+
+        sendTracker = new AtomicInteger(0);
+        sendSummation = new AtomicLong(0);
+        receiveTracker = new AtomicInteger(0);
+        receiveSummation = new AtomicLong(0);
+        relayTracker = new AtomicInteger(0);
     }
 
     public static void sendMessages(int numRounds){
@@ -202,14 +236,23 @@ public class MessagingNode {
                     String[] parts = path.split(" ");
                     String target = parts[0];
 
+                    System.out.println("[" + parts.length + "] " + path);
+
+                    if(parts.length > 2)
+                        testHops++;
+
                     path = "";
                     for(int j = 1; j < parts.length; j++){
-                        path += parts[j];
+                        path += parts[j] + " ";
                     }
+                    path = path.trim();
 
                     try{
-                        DataTransmissionMessage request = new DataTransmissionMessage(path, ThreadLocalRandom.current().nextInt());
+                        int payload = ThreadLocalRandom.current().nextInt();
+                        DataTransmissionMessage request = new DataTransmissionMessage(path, payload);
                         connections.get(target).getOutputStream().write(request.getMessage());
+
+                        sendSummation.getAndAdd(payload);
                     } catch (IOException e){
                         System.out.print("Failed to send round.");
                     }
@@ -223,8 +266,40 @@ public class MessagingNode {
                 } catch (IOException e){
                     System.out.println("Unable to send task complete message.");
                 }
+
+                System.out.println("Hops > 2: " + testHops);
             }
         }).start();
+    }
+
+    public static void printShortestPaths(){
+        System.out.println("Print shortest path.");
+
+        String source = host + ":" + port;
+        ArrayList<String> targets = new ArrayList<String>(links.keySet());
+        targets.remove(source);
+
+        for(String target: targets){
+            String path = source + " " + computePath(source, target);
+            String[] parts = path.split(" ");
+
+            String total = source;
+            for(int i = 1; i < parts.length; i++){
+              total += "--" + getWeight(parts[i - 1], parts[i]) + "--" + parts[i];
+            }
+
+            System.out.println(total);
+        }
+    }
+
+    public static int getWeight(String source, String target){
+        for(Link link: links.get(source)){
+            if(link.getNode().equals(target)){
+                return link.getWeight();
+            }
+        }
+
+        return -1;
     }
 
     public static String computePath(String source, String sink){
@@ -369,7 +444,7 @@ public class MessagingNode {
                 connections.put(cHost + ":" + cPort, connection);
                 System.out.println("[Node] Creating connection to " + cHost + ":" + cPort);
 
-                new Thread(new NodeConnectionRunnable(connection, connections, sendTracker, receiveTracker, relayTracker)).start();
+                new Thread(new NodeConnectionRunnable(connection, connections, receiveTracker, receiveSummation, relayTracker)).start();
 
                 RegisterRequestMessage request = new RegisterRequestMessage(connection.getInetAddress().getHostAddress(), port);
                 connection.getOutputStream().write(request.getMessage());

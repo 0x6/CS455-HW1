@@ -9,6 +9,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class RegistryRunnable implements Runnable{
 	public Socket clientSocket;
@@ -16,9 +18,14 @@ public class RegistryRunnable implements Runnable{
 	public DataInputStream dis;
 	public HashMap<String, Socket> registry;
 
-	public RegistryRunnable(Socket _clientSocket, HashMap<String, Socket> _registry){
+	public AtomicInteger completed;
+	public TrafficReport trafficReport;
+
+	public RegistryRunnable(Socket _clientSocket, HashMap<String, Socket> _registry, AtomicInteger _completed, TrafficReport _trafficReport){
 		clientSocket = _clientSocket;
 		registry = _registry;
+		completed = _completed;
+		trafficReport = _trafficReport;
 		
 		try {
 			dos = new DataOutputStream(clientSocket.getOutputStream());
@@ -67,6 +74,9 @@ public class RegistryRunnable implements Runnable{
 		MessageType type = MessageType.values()[buffer.getInt()];
 
 		switch (type) {
+			case DATA_TRANSMISSION:
+				System.out.println("Why are you here.");
+				break;
 			case REGISTER_REQUEST:
 				registerRequest(buffer.getInt(4), new String(Arrays.copyOfRange(message, 8, message.length)));
 				break;
@@ -74,8 +84,61 @@ public class RegistryRunnable implements Runnable{
 				deregisterRequest(buffer.getInt(4), new String(Arrays.copyOfRange(message, 8, message.length)));
 				break;
 			case TASK_COMPLETE:
-				System.out.println("Task complete.");
+				completed.getAndIncrement();
+
+				if(completed.get() == registry.size()){
+					new Thread(new Runnable(){
+						@Override
+						public void run(){
+							System.out.println("[Registry] Waiting 5 seconds for messages to propagate...");
+
+							try {
+								Thread.sleep(5000);
+
+								System.out.println("[Registry] Requesting traffic pull from messaging nodes.");
+								for (String key : registry.keySet()) {
+									Socket s = registry.get(key);
+
+									TrafficPullMessage request = new TrafficPullMessage();
+									s.getOutputStream().write(request.getMessage());
+
+								}
+							} catch (Exception e) {
+								System.out.println("Unable to pull traffic.");
+							}
+
+						}
+					}).start();
+				}
 				break;
+			case TRAFFIC_SUMMARY:
+				int sent = buffer.getInt(4);
+				long sumSent =  buffer.getLong(8);
+				int received = buffer.getInt(16);
+				long sumReceived = buffer.getLong(20);
+				int relayed = buffer.getInt(28);
+
+				int port = buffer.getInt(32);
+				String host = new String(Arrays.copyOfRange(message, 36, message.length));
+
+				if(trafficReport.getContributers() == 0){
+					System.out.println("|     Node     |    # Messages Sent    |    # Messages Received    |    Sum of Sent    |    Sum of Received    |    # Messages Relayed    |");
+				}
+
+				StringBuilder sb = new StringBuilder();
+
+				sb.setLength(14);
+				sb.append(host + ":" + port);
+
+				System.out.print();
+				//System.out.println(host + ":" + port + " Sent: " + sent + " Sum: " + sumSent + " Received: " + received + " Sum: " + sumReceived + " Relayed: " + relayed);
+
+				trafficReport.contribute(sent, sumSent, received, sumReceived);
+				if(trafficReport.getContributers() == registry.size()){
+					System.out.println(trafficReport.toString());
+					trafficReport = new TrafficReport();
+				}
+			break;
 		}
 	}
 	

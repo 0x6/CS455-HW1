@@ -1,7 +1,7 @@
-import com.sun.javafx.tk.Toolkit;
 import wireformats.LinkWeightMessage;
 import wireformats.NodeListMessage;
 import wireformats.TaskInitiateMessage;
+import wireformats.TrafficPullMessage;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -10,6 +10,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Registry {
 	final static int PORT = 8000;
@@ -17,6 +19,10 @@ public class Registry {
 	static ServerSocket serverSocket;
 
 	static HashMap<String, ArrayList<String>> partners;
+	static AtomicInteger completed;
+
+	static ArrayList<String> links;
+	static TrafficReport trafficReport;
 
 	static Thread serverThread = new Thread(new Runnable(){
 		@Override
@@ -25,7 +31,7 @@ public class Registry {
 				try{
 					Socket clientSocket = serverSocket.accept();
 
-					RegistryRunnable r = new RegistryRunnable(clientSocket, registry);
+					RegistryRunnable r = new RegistryRunnable(clientSocket, registry, completed, trafficReport);
 					new Thread(r).start();
 				} catch (Exception e){
 					System.out.println("Unable to accept incoming connection");
@@ -43,6 +49,9 @@ public class Registry {
 		
 		registry = new HashMap<String, Socket>();
 		partners = new HashMap<String, ArrayList<String>>();
+		completed = new AtomicInteger(0);
+
+		trafficReport = new TrafficReport();
 
 		serverThread.start();
 
@@ -60,6 +69,11 @@ public class Registry {
 				case "send-overlay-link-weights":
 					linkWeights();
 					break;
+                case "list-weights":
+                    for(String str: links){
+                        System.out.println("[Registry] " + str);
+                    }
+                    break;
 				case "exit":
 					mainFlag = false;
 					break;
@@ -134,10 +148,12 @@ public class Registry {
 				System.out.println("Unable to write to output stream. " + e);
 			}
 		}
+
+		System.out.println("[Registry] Finished constructing overlay with " + connections + " connections.");
 	}
 
 	public static void linkWeights(){
-		ArrayList<String> links = new ArrayList<String>();
+		links = new ArrayList<String>();
 
 		for(String key: partners.keySet()){
 			for(String node: partners.get(key)){
@@ -154,6 +170,8 @@ public class Registry {
 				System.out.println("Unable to write to output stream. " + e);
 			}
 		}
+
+        System.out.println("[Registry] Finished assigning link weights.");
 	}
 
 	public static void startMessaging(int numRounds){
@@ -166,5 +184,7 @@ public class Registry {
         } catch (Exception e){
             System.out.println("Unable to send initiate message.");
         }
+
+        System.out.println("[Registry] Starting " + numRounds + " messaging rounds on all nodes.");
     }
 }

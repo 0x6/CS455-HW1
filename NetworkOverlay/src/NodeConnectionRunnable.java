@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class NodeConnectionRunnable implements Runnable{
     public Socket nodeSocket;
@@ -18,16 +19,16 @@ public class NodeConnectionRunnable implements Runnable{
 
     byte[] fragment = null;
 
-    public AtomicInteger sendTracker;
     public AtomicInteger relayTracker;
     public AtomicInteger receiveTracker;
+    public AtomicLong receiveSummation;
 
-    public NodeConnectionRunnable(Socket _clientSocket, HashMap<String, Socket> _connections, AtomicInteger _sendTracker, AtomicInteger _receiveTracker, AtomicInteger _relayTracker){
+    public NodeConnectionRunnable(Socket _clientSocket, HashMap<String, Socket> _connections, AtomicInteger _receiveTracker, AtomicLong _receiveSummation, AtomicInteger _relayTracker){
         nodeSocket = _clientSocket;
         connections = _connections;
-        sendTracker = _sendTracker;
         relayTracker = _relayTracker;
         receiveTracker = _receiveTracker;
+        receiveSummation = _receiveSummation;
 
         try {
             dos = new DataOutputStream(nodeSocket.getOutputStream());
@@ -106,10 +107,12 @@ public class NodeConnectionRunnable implements Runnable{
     }
 
     public void handleTransmission(byte[] message) throws IOException{
+        //System.out.println("Handling transmission.");
         ByteBuffer buffer = ByteBuffer.wrap(message);
 
         int payload = buffer.getInt(4);
         String path = new String(Arrays.copyOfRange(message, 8, message.length));
+        //System.out.println(path);
 
         if(path.length() > 0){
             String[] parts = path.split(" ");
@@ -117,15 +120,17 @@ public class NodeConnectionRunnable implements Runnable{
 
             path = "";
             for(int i = 1; i < parts.length; i++){
-                path += parts[i];
+                path += parts[i] + " ";
             }
+            path = path.trim();
 
             //System.out.println("Passing data...");
-            sendTracker.getAndIncrement();
+            relayTracker.getAndIncrement();
             DataTransmissionMessage request = new DataTransmissionMessage(path, payload);
             if(connections.containsKey(target))
                 connections.get(target).getOutputStream().write(request.getMessage());
         } else {
+            receiveSummation.getAndAdd(payload);
             receiveTracker.getAndIncrement();
         }
     }
